@@ -85,4 +85,29 @@ create table if not exists positions
 alter table positions
     owner to garage_genius_admin;
 
+create table if not exists workers
+(
+    id          uuid    not null
+        primary key,
+    position_id integer not null,
+    name        varchar not null,
+    login       varchar not null,
+    pass_hash   varchar not null
+);
+
+alter table workers
+    owner to garage_genius_admin;
+
+create table if not exists clients_offline
+(
+    id           uuid    not null
+        primary key,
+    name         varchar not null,
+    email        varchar,
+    phone_number varchar not null
+);
+
+alter table clients_offline
+    owner to postgres;
+
 

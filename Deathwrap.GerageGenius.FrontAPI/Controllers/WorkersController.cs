@@ -1,83 +1,69 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Deathwrap.GarageGenius.Helper;
-using Deathwrap.GarageGenius.Service.Clients;
-using Deathwrap.GarageGenius.Service.Email;
 using Deathwrap.GarageGenius.Service.RefreshTokens;
 using Deathwrap.GarageGenius.Service.Token;
-using Deathwrap.GarageGenius.Service.Validation;
+using Deathwrap.GarageGenius.Service.Workers;
 using Deathwrap.GerageGenius.FrontAPI.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Deathwrap.GerageGenius.FrontAPI.Controllers;
-[Route("api/")]
-[ApiController]
-public class ClientsController : ControllerBase
+
+public class WorkersController: ControllerBase
 {
-    private readonly IClientsService _clientsService;
+    
+    private readonly IWorkersService _workersService;
     private readonly IConfiguration _configuration;
-    private readonly IEmailService _emailService;
-    private readonly IValidationService _validationService;
     private readonly ITokenService _tokenService;
     private readonly IRefreshTokensService _refreshTokensService;
     
-    public ClientsController(IClientsService clientsService, 
+    
+    public WorkersController(IWorkersService workersService, 
         IConfiguration configuration,
-        IValidationService validationService,
-        IEmailService emailService,
         ITokenService tokenService,
         IRefreshTokensService refreshTokensService)
     {
-        _clientsService = clientsService;
+        _workersService = workersService;
         _configuration = configuration;
-        _validationService = validationService;
-        _emailService = emailService;
         _tokenService = tokenService;
         _refreshTokensService = refreshTokensService;
     }
     
-    [HttpPost("auth/sign_up")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    [HttpPost("auth/admin/sign_in")]
+    public async Task<IActionResult> AdminAuthenticate(WorkerAuthRequest request)
     {
-
-        var code = await _validationService.GenerateCode();
+        var worker = await _workersService.GetAndCheckWorker(request.Login, request.Password);
         
-        await _clientsService.AddClientForVerification(request.Name, request.Email, request.Password, code);
+        if (worker == null)
+        {
+            return BadRequest("Bad credentials");
+        }
 
-        var url = await _validationService.GenerateUrl(request.Email, code);
+        var position = await _workersService.GetPositionName(worker.PositionId);
 
-        await _emailService.Send(url, request.Email);
-
-        return Ok();
-    }
-    
-    [HttpPost("auth/sign_in")]
-    public async Task<IActionResult> Authenticate(ClientAuthRequest request)
-    {
-        var client = await _clientsService.GetAndCheckClient(request.Email, request.Password);
-
-        if (client == null)
+        if (position != "admin")
         {
             return BadRequest("Bad credentials");
         }
 
         var sessionId = Guid.NewGuid();
-        var accessToken = _tokenService.CreateClientToken(client, sessionId);
+        var accessToken = _tokenService.CreateWorkerToken(worker, sessionId, "admin");
         
         var refreshToken = _configuration.GenerateRefreshToken();
 
-        await _refreshTokensService.AddRefreshToken(client.Id, sessionId, refreshToken);
+        await _refreshTokensService.AddRefreshToken(worker.Id, sessionId, refreshToken);
 
         return Ok(new AuthResponse
         {
-            Name = client.Name,
+            Name = worker.Name,
             AccessToken  = accessToken,
             RefreshToken = refreshToken
         });
     }
 
-    [HttpPost("auth/refresh")]
+    [HttpPost("auth/admin/refresh")]
     public async Task<IActionResult> RefreshToken(TokenApi tokenApi)
     {
         if (tokenApi is null)

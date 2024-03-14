@@ -16,14 +16,25 @@ public class TokenService : ITokenService
     {
         _configuration = configuration;
     }
-    public string CreateToken(ClientConfirmed client, Guid sessionId)
+    public string CreateClientToken(ClientConfirmed client, Guid sessionId)
     {
         var token = client
-            .CreateClaims(sessionId)
+            .CreateClientClaims(sessionId)
             .CreateToken(_configuration);
         var tokenHandler = new JwtSecurityTokenHandler();
         
-        return tokenHandler.WriteToken(token);    }
+        return tokenHandler.WriteToken(token);    
+    }
+    
+    public string CreateWorkerToken(Worker worker, Guid sessionId, string role)
+    {
+        var token = worker
+            .CreateWorkerClaims(sessionId, role)
+            .CreateToken(_configuration);
+        var tokenHandler = new JwtSecurityTokenHandler();
+        
+        return tokenHandler.WriteToken(token);    
+    }
 
     public ClaimsPrincipal GetPrincipalFromExpiredToken(string? accessToken)
     {

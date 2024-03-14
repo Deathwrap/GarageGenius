@@ -3,6 +3,7 @@ using System.Text;
 using Deathwrap.GarageGenius.Data.Models;
 using Deathwrap.GarageGenius.Repository.Clients;
 using Deathwrap.GarageGenius.Repository.RefreshTokens;
+using Deathwrap.GarageGenius.Helper;
 
 namespace Deathwrap.GarageGenius.Service.Clients;
 
@@ -25,7 +26,7 @@ public class ClientsService: IClientsService
             CreationDate = DateTime.UtcNow,
             Email = requestEmail,
             Name = requestName,
-            PassHash = HashPassword(requestPassword, requestEmail),
+            PassHash = UtilsExtensions.HashPassword(requestPassword, requestEmail),
         };
         await _clientsRepository.AddClientToConfirm(clientToConfirm);
     }
@@ -37,7 +38,7 @@ public class ClientsService: IClientsService
         {
             return null;
         }
-        var hashedEnteredPassword = HashPassword(requestPassword, requestEmail);
+        var hashedEnteredPassword = UtilsExtensions.HashPassword(requestPassword, requestEmail);
         if (!client.PassHash.Equals(hashedEnteredPassword))
         {
             return null;
@@ -58,17 +59,6 @@ public class ClientsService: IClientsService
             client.PassHash = clientToValidate.PassHash;
 
             await _clientsRepository.AddClientConfirmed(client);
-        }
-    }
-    
-    public static string HashPassword(string password, string salt)
-    {
-        using (var sha256 = SHA256.Create())
-        {
-            byte[] passwordBytes = Encoding.UTF8.GetBytes(password + salt);
-            byte[] hashedBytes = sha256.ComputeHash(passwordBytes);
-
-            return Convert.ToBase64String(hashedBytes);
         }
     }
 }

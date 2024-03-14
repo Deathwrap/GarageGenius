@@ -3,21 +3,24 @@ using System.Text.Json.Serialization;
 using Deathwrap.GarageGenius.Data.DataAccess;
 using Deathwrap.GarageGenius.Repository.Cars;
 using Deathwrap.GarageGenius.Repository.Clients;
+using Deathwrap.GarageGenius.Repository.Positions;
 using Deathwrap.GarageGenius.Repository.RefreshTokens;
 using Deathwrap.GarageGenius.Repository.ServiceCategories;
 using Deathwrap.GarageGenius.Repository.Services;
+using Deathwrap.GarageGenius.Repository.Workers;
 using Deathwrap.GarageGenius.Service.Cars;
 using Deathwrap.GarageGenius.Service.Clients;
 using Deathwrap.GarageGenius.Service.Email;
+using Deathwrap.GarageGenius.Service.Models;
 using Deathwrap.GarageGenius.Service.RefreshTokens;
 using Deathwrap.GarageGenius.Service.Services;
 using Deathwrap.GarageGenius.Service.Token;
 using Deathwrap.GarageGenius.Service.Validation;
+using Deathwrap.GarageGenius.Service.Workers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Newtonsoft.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,10 +38,28 @@ builder.Services.AddTransient<IRefreshTokensRepository, RefreshTokensRepository>
 builder.Services.AddTransient<ICarsService, CarsService>();
 builder.Services.AddTransient<ICarsRepository, CarsRepository>();
 builder.Services.AddTransient<IRefreshTokensService, RefreshTokensService>();
+builder.Services.AddTransient<IPositionsRepository, PositionsRepository>();
+builder.Services.AddTransient<IWorkersService, WorkersService>();
+builder.Services.AddTransient<IWorkersRepository, WorkersRepository>();
 
 builder.Services.AddHttpContextAccessor();
 
+{
+    var workersService = new WorkersService(new WorkersRepository(new DataAccess(builder.Configuration)), new PositionsRepository(new DataAccess(builder.Configuration)));
+    
+    var workers = await workersService.GetWorkers();
 
+    if (workers.IsNullOrEmpty())
+    {
+        await workersService.AddWorker(new WorkerMin()
+        {
+            Login = "Admin",
+            Name = "Администратор",
+            Password = "Admin123",
+            PositionId = 1
+        });
+    }
+}
 
 builder.Services.AddCors(options =>
 {
@@ -67,6 +88,7 @@ builder.Services.AddAuthentication(opt =>
         };
    
     });
+
 builder.Services.AddAuthorization(options => 
                       options.DefaultPolicy = new AuthorizationPolicyBuilder
                               (JwtBearerDefaults.AuthenticationScheme)

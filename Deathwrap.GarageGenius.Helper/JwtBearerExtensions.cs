@@ -13,12 +13,13 @@ namespace Deathwrap.GarageGenius.Helper;
 
 public static class JwtBearerHelper
 {
-    public static List<Claim> CreateClaims(this ClientConfirmed client, Guid sessionId)
+    public static List<Claim> CreateClientClaims(this ClientConfirmed client, Guid sessionId)
     {
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new("session_id", sessionId.ToString()),
+            new(ClaimTypes.Role, "client"),
             new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
             new(ClaimTypes.NameIdentifier, client.Id.ToString()),
             new(ClaimTypes.Email, client.Email!),
@@ -26,14 +27,17 @@ public static class JwtBearerHelper
         return claims;
     }
     
-    public static SigningCredentials CreateSigningCredentials(this IConfiguration configuration)
+    public static List<Claim> CreateWorkerClaims(this Worker worker, Guid sessionId, string role)
     {
-        return new SigningCredentials(
-            new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(configuration["Jwt:Secret"]!)
-            ),
-            SecurityAlgorithms.HmacSha256
-        );
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("session_id", sessionId.ToString()),
+            new(ClaimTypes.Role, role),
+            new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
+            new(ClaimTypes.NameIdentifier, worker.Id.ToString()),
+        };
+        return claims;
     }
     
     public static JwtSecurityToken CreateToken(this IEnumerable<Claim> claims, IConfiguration configuration)

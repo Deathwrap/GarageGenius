@@ -27,4 +27,13 @@ public class PositionsRepository: IPositionsRepository
     {
         throw new NotImplementedException();
     }
+
+    public async Task<Position?> FindById(int positionid)
+    {
+        var query = @"select * from positions where id = @Id";
+
+        var positions = await _db.GetData<Position, dynamic>(query, new { Id = positionid });
+
+        return positions.FirstOrDefault();
+    }
 }
